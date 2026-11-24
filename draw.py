@@ -1,285 +1,335 @@
-"""Draw the NI24 front page: hybrid 5-illustration news poster, 1024x1024.
+"""NI24 round 2: 'The World in One Day' — five fronts, one day.
 
-Dev-machine renderer (Pillow). The graded entrypoint main.py only copies
-the PNG this script produces, so the grader never needs Pillow.
+A different front page from round 1: a dark navy header band, one
+full-width COP31 hero, four medium illustrations in a row, then a
+compact 25-story digest grid. Same 30 verified stories, 24 Nov 2026.
+
+Dev-machine renderer (Pillow). The graded entrypoint main.py only
+copies the PNG this script produces, so the grader never needs Pillow.
 Run:  python3 draw.py  ->  assets/entry.png
 """
 import os
 from PIL import Image, ImageDraw, ImageFont
 
-W = H = 1024
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "entry.png")
+SIDE = 1024
+DEST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "entry.png")
 
-BLUE = (25, 70, 170)
-RED = (185, 30, 30)
-INK = (20, 24, 32)
-GREY = (90, 96, 108)
-WHITE = (255, 255, 255)
+NAVY = (15, 23, 42)
+GOLD = (251, 191, 36)
+CRIMSON = (220, 38, 38)
+PAPER = (255, 255, 255)
+INK = (17, 24, 39)
+MUTED = (71, 85, 105)
 
-REGION = {
-    "AMERICAS": (29, 78, 216),
-    "EUROPE": (13, 148, 136),
-    "MIDDLE EAST": (185, 28, 28),
-    "ASIA": (234, 88, 12),
-    "AFRICA": (124, 58, 237),
-    "GLOBAL": (71, 85, 105),
-    "SPORT": (21, 128, 61),
-    "SCIENCE": (30, 64, 175),
+TAGCOLOUR = {
+    "GAZA": (185, 28, 28),
+    "VENEZUELA": (29, 78, 216),
+    "BOLSONARO": (29, 78, 216),
+    "AFCON": (124, 58, 237),
+    "NEPAL": (234, 88, 12),
+    "TAJIKISTAN": (234, 88, 12),
+    "IRAN": (185, 28, 28),
+    "LISBON": (13, 148, 136),
+    "DENMARK": (13, 148, 136),
+    "F1": (21, 128, 61),
+    "TENNIS": (21, 128, 61),
+    "CHESS": (21, 128, 61),
+    "CRICKET": (21, 128, 61),
+    "SPACE": (30, 64, 175),
+    "LIBYA": (13, 148, 136),
+    "FRANCE": (13, 148, 136),
+    "MYANMAR": (234, 88, 12),
+    "ZIMBABWE": (124, 58, 237),
+    "KOREA": (29, 78, 216),
+    "TALIBAN": (185, 28, 28),
+    "BORDER": (234, 88, 12),
+    "AI": (30, 64, 175),
+    "SPICEJET": (234, 88, 12),
+    "FERRARI": (185, 28, 28),
+    "NEW YORK": (71, 85, 105),
 }
 
 
-def font(name, size):
-    path = "/usr/share/fonts/truetype/dejavu/" + name
+def load_font(fname, size):
     try:
-        return ImageFont.truetype(path, size)
+        return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/" + fname, size)
     except OSError:
         return ImageFont.load_default()
 
 
-SERIF_B = lambda s: font("DejaVuSerif-Bold.ttf", s)
-SANS_B = lambda s: font("DejaVuSans-Bold.ttf", s)
-SANS = lambda s: font("DejaVuSans.ttf", s)
+def serif_b(size):
+    return load_font("DejaVuSerif-Bold.ttf", size)
 
 
-def wrap(d, text, fnt, max_w):
-    words, lines, cur = text.split(), [], ""
-    for w in words:
-        trial = (cur + " " + w).strip()
+def sans_b(size):
+    return load_font("DejaVuSans-Bold.ttf", size)
+
+
+def sans(size):
+    return load_font("DejaVuSans.ttf", size)
+
+
+def fit_lines(d, text, fnt, max_w):
+    out, cur = [], ""
+    for word in text.split():
+        trial = (cur + " " + word).strip()
         if d.textlength(trial, font=fnt) <= max_w:
             cur = trial
         else:
             if cur:
-                lines.append(cur)
-            cur = w
+                out.append(cur)
+            cur = word
     if cur:
-        lines.append(cur)
-    return lines
+        out.append(cur)
+    return out
 
 
-def chip(d, x, y, label, color):
-    fnt = SANS_B(11)
-    tw = d.textlength(label, font=fnt)
-    d.rounded_rectangle([x, y, x + tw + 14, y + 20], radius=4, fill=color)
-    d.text((x + 7, y + 3), label, font=fnt, fill=WHITE)
+def tag_chip(d, x, y, label, colour):
+    f = sans_b(11)
+    tw = d.textlength(label, font=f)
+    d.rounded_rectangle([x, y, x + tw + 14, y + 20], radius=4, fill=colour)
+    d.text((x + 7, y + 3), label, font=f, fill=PAPER)
 
 
-def caption_block(d, x, y, w, head, body, head_size=16, body_size=12):
-    hf, bf = SANS_B(head_size), SANS(body_size)
-    lines = wrap(d, head, hf, w)
-    yy = y
-    for ln in lines:
-        d.text((x, yy), ln, font=hf, fill=INK)
-        yy += head_size + 3
-    blines = wrap(d, body, bf, w)
-    for ln in blines[:2]:
-        d.text((x, yy), ln, font=bf, fill=(60, 66, 78))
-        yy += 15
-    return yy
+def draw_globe(d, cx, cy, r):
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(56, 189, 248),
+              outline=PAPER, width=3)
+    d.ellipse([cx - r + 22, cy - r + 26, cx - r + 62, cy - r + 60], fill=(74, 222, 128))
+    d.ellipse([cx + 6, cy + 2, cx + 48, cy + 36], fill=(74, 222, 128))
+    d.ellipse([cx - 44, cy + 30, cx - 6, cy + 66], fill=(74, 222, 128))
+    d.arc([cx - r, cy - r, cx + r, cy + r], 210, 340, fill=PAPER, width=2)
 
 
-def globe(d, cx, cy, r):
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(59, 130, 246),
-              outline=(255, 255, 255), width=3)
-    d.ellipse([cx - r + 18, cy - r + 22, cx - r + 52, cy - r + 52], fill=(34, 197, 94))
-    d.ellipse([cx + 8, cy + 6, cx + 44, cy + 34], fill=(34, 197, 94))
-    d.ellipse([cx - 34, cy + 28, cx - 2, cy + 58], fill=(34, 197, 94))
-    d.arc([cx - r, cy - r, cx + r, cy + r], 200, 330, fill=(255, 255, 255), width=2)
+def draw_flame(d, x, y, s):
+    for dx, dy, sc, col in [(0, 0, 1.0, (253, 224, 71)), (-22, 10, 0.7, (251, 146, 60)),
+                            (22, 10, 0.7, (251, 146, 60)), (0, -5, 0.5, (239, 68, 68))]:
+        d.polygon([(x + dx, y + dy - 40 * sc), (x + dx + 14 * sc, y + dy),
+                   (x + dx - 14 * sc, y + dy)], fill=col)
 
 
-def flames(d, x, y, s):
-    for dx, dy, sc, col in [(0, 0, 1.0, (250, 204, 21)), (-26, 12, 0.7, (249, 115, 22)),
-                            (26, 12, 0.7, (249, 115, 22)), (0, -6, 0.55, (239, 68, 68))]:
-        pts = [(x + dx, y + dy - 46 * sc), (x + dx + 16 * sc, y + dy),
-               (x + dx - 16 * sc, y + dy)]
-        d.polygon(pts, fill=col)
+def draw_quad(d, x, y, s):
+    d.ellipse([x - 8 * s, y - 4 * s, x + 8 * s, y + 4 * s], fill=(226, 232, 240))
+    for sx in (-14, 14):
+        d.line([(x + sx * s - 8 * s, y - 8 * s), (x + sx * s + 8 * s, y - 8 * s)],
+               fill=(226, 232, 240), width=2)
+    d.ellipse([x - 3 * s, y + 6 * s, x + 3 * s, y + 12 * s], fill=CRIMSON)
 
 
-def news_card(d, cx, cy, cw, ch, tag, head, body):
-    tint = REGION[tag]
-    d.rectangle([cx, cy, cx + cw, cy + ch], fill=WHITE,
-                outline=(200, 205, 215), width=1)
-    d.rectangle([cx, cy, cx + 5, cy + ch], fill=tint)
-    chip(d, cx + 12, cy + 6, tag, tint)
-    hf, bf = SANS_B(13), SANS(11)
-    hlines = wrap(d, head, hf, cw - 24)[:2]
-    yy = cy + 29
-    for ln in hlines:
-        d.text((cx + 12, yy), ln, font=hf, fill=INK)
-        yy += 15
-    nbody = 2 if len(hlines) == 1 else 1
-    for ln in wrap(d, body, bf, cw - 24)[:nbody]:
-        d.text((cx + 12, yy), ln, font=bf, fill=(60, 66, 78))
-        yy += 13
+def medium_card(d, x, y, w, h, scene_h, tag, head, body, bg):
+    d.rectangle([x, y, x + w, y + h], outline=(203, 213, 225), width=1)
+    d.rectangle([x, y, x + w, y + scene_h], fill=bg)
+    tag_chip(d, x + 8, y + 8, tag, TAGCOLOUR[tag] if tag in TAGCOLOUR else (71, 85, 105))
+    hf, bf = sans_b(14), sans(11)
+    yy = y + scene_h + 8
+    for ln in fit_lines(d, head, hf, w - 20)[:2]:
+        d.text((x + 10, yy), ln, font=hf, fill=INK)
+        yy += 17
+    for ln in fit_lines(d, body, bf, w - 20)[:2]:
+        d.text((x + 10, yy), ln, font=bf, fill=MUTED)
+        yy += 14
 
 
-def main():
-    img = Image.new("RGB", (W, H), WHITE)
+def digest_row(d, x, y, w, tag, head, body):
+    colour = TAGCOLOUR[tag]
+    d.rectangle([x, y, x + 4, y + 46], fill=colour)
+    tf, hf, bf = sans_b(11), sans_b(12), sans(11)
+    d.text((x + 12, y + 3), tag, font=tf, fill=colour)
+    tw = d.textlength(tag + "  ", font=tf)
+    d.text((x + 12 + tw, y + 3), head, font=hf, fill=INK)
+    for i, ln in enumerate(fit_lines(d, body, bf, w - 12)[:2]):
+        d.text((x + 12, y + 21 + i * 13), ln, font=bf, fill=MUTED)
+
+
+def build():
+    img = Image.new("RGB", (SIDE, SIDE), PAPER)
     d = ImageDraw.Draw(img)
 
-    # Masthead + date.
-    d.text((W // 2, 12), "THE WORLD'S NEWS IN ONE PICTURE",
-           font=SERIF_B(38), fill=BLUE, anchor="ma")
-    d.text((W // 2, 58), "TUESDAY, 24 NOVEMBER 2026",
-           font=SERIF_B(24), fill=RED, anchor="ma")
-    d.line([(8, 94), (W - 8, 94)], fill=(25, 70, 170), width=2)
+    # Dark header band: masthead left, date right.
+    d.rectangle([0, 0, SIDE, 64], fill=NAVY)
+    d.text((16, 14), "THE WORLD IN ONE DAY", font=serif_b(30), fill=PAPER)
+    d.text((1008, 20), "TUESDAY, 24 NOVEMBER 2026", font=sans_b(19),
+           fill=GOLD, anchor="ra")
+    d.rectangle([0, 64, SIDE, 68], fill=CRIMSON)
 
-    # ---- Row 1: two big panels (y 100..306) ----
-    # 1. COP31 deadlock.
-    px, py, pw, ph = 8, 100, 492, 206
-    d.rectangle([px, py, px + pw, py + ph], outline=(200, 205, 215), width=1)
-    d.rectangle([px, py, px + pw, py + 138], fill=(219, 234, 254))
-    globe(d, px + 90, py + 70, 52)
-    d.line([(px + 150, py + 30), (px + 190, py + 62), (px + 168, py + 88),
-            (px + 214, py + 112)], fill=RED, width=5)
-    d.text((px + 250, py + 42), "NO DEAL", font=SANS_B(34), fill=RED)
-    d.text((px + 250, py + 84), "Antalya talks\ncollapse", font=SANS(20), fill=INK)
-    chip(d, px + 8, py + 8, "GLOBAL", REGION["GLOBAL"])
-    caption_block(d, px + 10, py + 146, pw - 20, "COP31 ENDS IN DEADLOCK",
-                  "No climate deal in Antalya; fossil fuel phase-out stalls.")
+    # ---- Hero: COP31, full width (y 72..316) ----
+    hx, hy, hw = 8, 72, 1008
+    d.rectangle([hx, hy, hx + hw, hy + 244], outline=(203, 213, 225), width=1)
+    d.rectangle([hx, hy, hx + hw, hy + 178], fill=(12, 74, 110))
+    draw_globe(d, hx + 130, hy + 90, 76)
+    d.line([(hx + 210, hy + 26), (hx + 252, hy + 64), (hx + 226, hy + 92),
+            (hx + 276, hy + 122), (hx + 250, hy + 150)], fill=CRIMSON, width=6)
+    d.text((hx + 320, hy + 34), "NO DEAL", font=sans_b(52), fill=PAPER)
+    d.text((hx + 320, hy + 96), "IN ANTALYA", font=sans_b(30), fill=GOLD)
+    d.text((hx + 320, hy + 138), "Two weeks of talks end with no agreement",
+           font=sans(16), fill=(186, 230, 253))
+    tag_chip(d, hx + 8, hy + 8, "GLOBAL", (71, 85, 105))
+    hf, bf = sans_b(20), sans(13)
+    yy = hy + 186
+    d.text((hx + 12, yy), "COP31 ENDS IN DEADLOCK", font=hf, fill=INK)
+    d.text((hx + 12, yy + 28),
+           "Climate talks collapse in Antalya — no deal, and the fossil-fuel phase-out stalls.",
+           font=bf, fill=MUTED)
 
-    # 2. Factory fire, Indonesia.
-    px = 524
-    d.rectangle([px, py, px + pw, py + ph], outline=(200, 205, 215), width=1)
-    d.rectangle([px, py, px + pw, py + 138], fill=(69, 26, 3))
-    d.rectangle([px + 30, py + 78, px + 200, py + 138], fill=(41, 37, 36))
-    d.rectangle([px + 220, py + 58, px + 300, py + 138], fill=(41, 37, 36))
-    d.rectangle([px + 52, py + 48, px + 66, py + 80], fill=(41, 37, 36))
-    d.rectangle([px + 96, py + 38, px + 110, py + 80], fill=(41, 37, 36))
-    d.ellipse([px + 330, py + 18, px + 380, py + 52], fill=(120, 113, 108))
-    d.ellipse([px + 360, py + 34, px + 420, py + 72], fill=(87, 83, 78))
-    flames(d, px + 130, py + 82, 1.0)
-    flames(d, px + 260, py + 66, 0.8)
-    chip(d, px + 8, py + 8, "ASIA", REGION["ASIA"])
-    caption_block(d, px + 10, py + 146, pw - 20, "FACTORY FIRE KILLS 24",
-                  "Candy plant blaze in Banten, Indonesia; workers still missing.")
+    # ---- Four medium illustrations (y 324..492) ----
+    my, mh, mw = 324, 168, 244
+    # 1. Banten factory fire — dusk skyline.
+    px = 8
+    d.rectangle([px, my, px + mw, my + mh], outline=(203, 213, 225), width=1)
+    for i, col in enumerate([(124, 45, 18), (234, 88, 12), (253, 186, 116)]):
+        d.rectangle([px, my + i * 34, px + mw, my + (i + 1) * 34], fill=col)
+    d.rectangle([px + 18, my + 62, px + 120, my + 100], fill=(28, 25, 23))
+    d.rectangle([px + 136, my + 44, px + 196, my + 100], fill=(28, 25, 23))
+    d.rectangle([px + 36, my + 38, px + 48, my + 62], fill=(28, 25, 23))
+    d.ellipse([px + 196, my + 12, px + 232, my + 36], fill=(120, 113, 108))
+    draw_flame(d, px + 70, my + 64, 0.9)
+    draw_flame(d, px + 165, my + 48, 0.75)
+    tag_chip(d, px + 8, my + 8, "ASIA", (234, 88, 12))
+    yy = my + 108
+    for ln in fit_lines(d, "FACTORY FIRE KILLS 24", sans_b(14), mw - 20)[:2]:
+        d.text((px + 10, yy), ln, font=sans_b(14), fill=INK)
+        yy += 17
+    for ln in fit_lines(d, "Candy plant blaze in Banten; workers missing.",
+                        sans(11), mw - 20)[:2]:
+        d.text((px + 10, yy), ln, font=sans(11), fill=MUTED)
+        yy += 14
 
-    # ---- Row 2: three medium panels (y 314..478) ----
-    # 3. Russia-Ukraine drones.
-    px, py, pw, ph = 8, 314, 325, 164
-    d.rectangle([px, py, px + pw, py + ph], outline=(200, 205, 215), width=1)
-    d.rectangle([px, py, px + pw, py + 104], fill=(15, 23, 42))
-    for sx, sy in [(60, 26), (150, 40), (240, 22), (280, 52), (110, 58)]:
-        d.ellipse([px + sx, py + sy, px + sx + 3, py + sy + 3], fill=WHITE)
-    d.polygon([(px + 210, py + 30), (px + 226, py + 46), (px + 244, py + 30),
-               (px + 226, py + 62)], fill=(250, 204, 21))
-    d.rectangle([px + 40, py + 74, px + 230, py + 104], fill=(30, 58, 95))
-    d.rectangle([px + 60, py + 58, px + 210, py + 76], fill=(51, 65, 85))
-    d.rectangle([px + 70, py + 40, px + 90, py + 58], fill=(51, 65, 85))
-    d.line([(px + 150, py + 46), (px + 150, py + 58)], fill=(239, 68, 68), width=3)
-    d.ellipse([px + 142, py + 38, px + 158, py + 54], fill=(239, 68, 68))
-    chip(d, px + 8, py + 8, "EUROPE", REGION["EUROPE"])
-    caption_block(d, px + 10, py + 112, pw - 20, "DRONES HIT KYIV REGION",
-                  "Russian cargo ship Sparta II burns in Gulf of Finland.", 15, 12)
+    # 2. Kyiv drones — purple dusk, quadcopters over a ship.
+    px = 260
+    d.rectangle([px, my, px + mw, my + mh], outline=(203, 213, 225), width=1)
+    d.rectangle([px, my, px + mw, my + 100], fill=(49, 46, 129))
+    for sx, sy in [(30, 18), (90, 34), (150, 14), (205, 40), (120, 52)]:
+        d.ellipse([px + sx, my + sy, px + sx + 3, my + sy + 3], fill=PAPER)
+    draw_quad(d, px + 70, my + 46, 1.0)
+    draw_quad(d, px + 170, my + 30, 0.8)
+    d.rectangle([px, my + 76, px + mw, my + 100], fill=(15, 23, 42))
+    d.rectangle([px + 50, my + 58, px + 190, my + 78], fill=(51, 65, 85))
+    d.rectangle([px + 66, my + 42, px + 86, my + 58], fill=(51, 65, 85))
+    tag_chip(d, px + 8, my + 8, "EUROPE", (13, 148, 136))
+    yy = my + 108
+    for ln in fit_lines(d, "DRONES HIT KYIV REGION", sans_b(14), mw - 20)[:2]:
+        d.text((px + 10, yy), ln, font=sans_b(14), fill=INK)
+        yy += 17
+    for ln in fit_lines(d, "Russian ship Sparta II burns in Gulf of Finland.",
+                        sans(11), mw - 20)[:2]:
+        d.text((px + 10, yy), ln, font=sans(11), fill=MUTED)
+        yy += 14
 
-    # 4. Hormuz.
-    px = 349
-    d.rectangle([px, py, px + pw, py + ph], outline=(200, 205, 215), width=1)
-    d.rectangle([px, py, px + pw, py + 104], fill=(7, 89, 133))
-    for wy in (78, 88, 98):
-        for wx in range(0, pw, 46):
-            d.arc([px + wx, py + wy, px + wx + 44, py + wy + 16], 180, 360,
-                  fill=(186, 230, 253), width=2)
-    d.rectangle([px + 70, py + 44, px + 250, py + 76], fill=(31, 41, 55))
-    d.rectangle([px + 110, py + 24, px + 150, py + 44], fill=(31, 41, 55))
-    d.ellipse([px + 268, py + 14, px + 312, py + 58], fill=RED)
-    d.text((px + 290, py + 22), "25", font=SANS_B(20), fill=WHITE, anchor="ma")
-    chip(d, px + 8, py + 8, "MIDDLE EAST", REGION["MIDDLE EAST"])
-    caption_block(d, px + 10, py + 112, pw - 20, "25 SAILORS DEAD NEAR HORMUZ",
-                  "UN counts the dead around the Strait of Hormuz.", 15, 12)
+    # 3. Hormuz — sunset sea, tanker, 25 dead.
+    px = 512
+    d.rectangle([px, my, px + mw, my + mh], outline=(203, 213, 225), width=1)
+    d.rectangle([px, my, px + mw, my + 52], fill=(249, 115, 22))
+    d.rectangle([px, my + 52, px + mw, my + 100], fill=(8, 145, 178))
+    for wy in (60, 72, 84):
+        for wx in range(0, mw, 40):
+            d.arc([px + wx, my + wy, px + wx + 38, my + wy + 14], 180, 360,
+                  fill=(207, 250, 254), width=2)
+    d.rectangle([px + 46, my + 40, px + 190, my + 66], fill=(31, 41, 55))
+    d.rectangle([px + 82, my + 22, px + 116, my + 40], fill=(31, 41, 55))
+    d.ellipse([px + 196, my + 10, px + 238, my + 52], fill=CRIMSON)
+    d.text((px + 217, my + 18), "25", font=sans_b(20), fill=PAPER, anchor="ma")
+    tag_chip(d, px + 8, my + 8, "MIDDLE EAST", (185, 28, 28))
+    yy = my + 108
+    for ln in fit_lines(d, "25 SAILORS DEAD NEAR HORMUZ", sans_b(14), mw - 20)[:2]:
+        d.text((px + 10, yy), ln, font=sans_b(14), fill=INK)
+        yy += 17
+    for ln in fit_lines(d, "UN counts the dead around the Strait of Hormuz.",
+                        sans(11), mw - 20)[:2]:
+        d.text((px + 10, yy), ln, font=sans(11), fill=MUTED)
+        yy += 14
 
-    # 5. Trump peace plan.
-    px = 690
-    d.rectangle([px, py, px + pw, py + ph], outline=(200, 205, 215), width=1)
-    d.rectangle([px, py, px + pw, py + 104], fill=(191, 219, 254))
-    d.rectangle([px + 96, py + 16, px + 228, py + 96], fill=WHITE,
-                outline=(100, 116, 139), width=2)
-    d.text((px + 162, py + 24), "28-POINT", font=SANS_B(17), fill=INK, anchor="ma")
-    d.text((px + 162, py + 46), "PEACE PLAN", font=SANS_B(17), fill=INK, anchor="ma")
-    for ly in (68, 78, 88):
-        d.line([(px + 112, py + ly), (px + 212, py + ly)], fill=(148, 163, 184), width=2)
-    d.ellipse([px + 20, py + 60, px + 52, py + 76], fill=(34, 197, 94))
-    d.ellipse([px + 44, py + 66, px + 76, py + 82], fill=(34, 197, 94))
-    d.ellipse([px + 268, py + 60, px + 300, py + 76], fill=(34, 197, 94))
-    d.ellipse([px + 244, py + 66, px + 276, py + 82], fill=(34, 197, 94))
-    chip(d, px + 8, py + 8, "AMERICAS", REGION["AMERICAS"])
-    caption_block(d, px + 10, py + 112, pw - 20, "TRUMP'S 28-POINT PEACE PLAN",
-                  "Europe leaders meet in Stockholm; Zelensky speaks.", 15, 12)
+    # 4. Peace plan — parchment, treaty document, olive branches.
+    px = 764
+    d.rectangle([px, my, px + mw, my + mh], outline=(203, 213, 225), width=1)
+    d.rectangle([px, my, px + mw, my + 100], fill=(254, 243, 199))
+    d.rectangle([px + 72, my + 12, px + 172, my + 92], fill=PAPER,
+                outline=(148, 163, 184), width=2)
+    d.text((px + 122, my + 20), "28", font=serif_b(30), fill=INK, anchor="ma")
+    d.text((px + 122, my + 54), "POINT PLAN", font=sans_b(12), fill=INK, anchor="ma")
+    for ly in (72, 80, 88):
+        d.line([(px + 86, my + ly), (px + 158, my + ly)], fill=(148, 163, 184), width=2)
+    for bx in (18, 196):
+        d.ellipse([px + bx, my + 58, px + bx + 26, my + 72], fill=(34, 197, 94))
+        d.ellipse([px + bx + 6, my + 66, px + bx + 32, my + 80], fill=(34, 197, 94))
+    tag_chip(d, px + 8, my + 8, "AMERICAS", (29, 78, 216))
+    yy = my + 108
+    for ln in fit_lines(d, "TRUMP'S 28-POINT PEACE PLAN", sans_b(14), mw - 20)[:2]:
+        d.text((px + 10, yy), ln, font=sans_b(14), fill=INK)
+        yy += 17
+    for ln in fit_lines(d, "Europe meets in Stockholm; Zelensky speaks.",
+                        sans(11), mw - 20)[:2]:
+        d.text((px + 10, yy), ln, font=sans(11), fill=MUTED)
+        yy += 14
 
-    # ---- 3x3 text cards (y 486..762) ----
-    cards = [
-        ("MIDDLE EAST", "GAZA STRIKES KILL UN WORKER",
-         "Oxfam: heavy metals, explosives residue and asbestos poison water and soil."),
-        ("AMERICAS", "US LISTS CARTEL DE LOS SOLES",
-         "Listed as terrorists; 21+ US strikes on drug boats since Sept; ~83 dead."),
-        ("AMERICAS", "BOLSONARO BACK IN PRISON",
+    # ---- Digest: the rest of the day, 25 stories ----
+    d.text((8, 500), "THE REST OF THE DAY — 25 MORE STORIES", font=sans_b(14), fill=NAVY)
+    d.line([(330, 508), (1016, 508)], fill=(203, 213, 225), width=1)
+    digest = [
+        ("GAZA", "UN WORKER KILLED IN STRIKES",
+         "Oxfam: metals and asbestos poison water and soil."),
+        ("VENEZUELA", "LISTS CARTEL AS TERRORISTS",
+         "21+ strikes on drug boats since Sept; ~83 dead."),
+        ("BOLSONARO", "BACK IN PRISON",
          "Brazil's former president returns to jail."),
-        ("AFRICA", "AFCON TITLE AWAITS COURT RULING",
-         "CAS decides Senegal vs Morocco appeal today, 24 November."),
-        ("ASIA", "INDIA PLEDGES $1.6BN TO NEPAL",
-         "Modi and Nepal PM Shah open Saryu-Kamala Express, Ayodhya-Janakpur."),
-        ("ASIA", "TAJIKISTAN LEAVES THE ICC",
-         "Dushanbe moves to quit the International Criminal Court."),
-        ("MIDDLE EAST", "IRANIAN SINGERS FLOGGED",
-         "Musicians whipped over a concert performed without hijab."),
-        ("EUROPE", "THOUSANDS MARCH IN LISBON",
-         "Portugal protests against the rising cost of living."),
-        ("EUROPE", "DENMARK UPHOLDS GHETTO EVICTIONS",
-         "Supreme Court backs the evictions."),
+        ("AFCON", "TITLE AWAITS COURT VERDICT",
+         "CAS rules on Senegal vs Morocco today."),
+        ("NEPAL", "INDIA GIVES NEPAL $1.6BN",
+         "Modi, PM Shah open Saryu-Kamala Express."),
+        ("TAJIKISTAN", "QUITS THE ICC",
+         "Dushanbe moves to leave the court."),
+        ("IRAN", "IRANIAN SINGERS FLOGGED",
+         "Whipped over a concert without hijab."),
+        ("LISBON", "MARCHES ON LIVING COSTS",
+         "Thousands protest rising prices in Portugal."),
+        ("DENMARK", "KEEPS GHETTO EVICTIONS",
+         "Top court backs the evictions."),
+        ("F1", "VERSTAPPEN WINS LAS VEGAS GP",
+         "Max Verstappen takes the 2026 Vegas race."),
+        ("TENNIS", "ALCARAZ WINS ATP FINALS",
+         "Beats Zverev in Turin for first title."),
+        ("CHESS", "CHAMPIONSHIP OPENS IN GENEVA",
+         "Champion Gukesh faces Sindarov."),
+        ("CRICKET", "WELLINGTON TEST ENDS DRAWN",
+         "India vs NZ level; Pant scores 128."),
+        ("SPACE", "BEPICOLOMBO REACHES MERCURY",
+         "ESA/JAXA probe enters orbit, off-plan."),
+        ("LIBYA", "RUSSIAN CORVETTE DESTROYED",
+         "Blast and fire in Benghazi port."),
+        ("FRANCE", "FAR-LEFT STREET PROTESTS",
+         "Street protests by the far left."),
+        ("MYANMAR", "HITS BACK AT ASEAN",
+         "Military-backed govt criticises decision."),
+        ("ZIMBABWE", "PASTOR ARRESTED",
+         "Uebert Angel held over assault claims."),
+        ("KOREA", "PYONGYANG SNUBS TRUMP",
+         "Kim ignores bid to reopen talks (WSJ)."),
+        ("TALIBAN", "ERASES WOMEN'S NAMES",
+         "Names replaced with 'Bibi' in Balkh papers."),
+        ("BORDER", "TALKS TO EASE TENSION",
+         "Military talks in Arunachal Pradesh."),
+        ("AI", "MODI OPENS CENTRE AT IIT PATNA",
+         "New AI centre at IIT Patna."),
+        ("SPICEJET", "GROUNDS ITS PLANES",
+         "Cash crisis: unpaid wages, flights cut."),
+        ("FERRARI", "UNVEILS 296 CHALLENGE",
+         "Stradale and Evo shown in Spain."),
+        ("NEW YORK", "STOCKPILE GOODS",
+         "Hoarding grows as tech outages spread."),
     ]
-    cw, ch, gap = 325, 88, 6
-    for i, (tag, head, body) in enumerate(cards):
-        cx = 8 + (i % 3) * (cw + gap)
-        cy = 486 + (i // 3) * (ch + gap)
-        news_card(d, cx, cy, cw, ch, tag, head, body)
+    cw, rh = 325, 50
+    for i, (tag, head, body) in enumerate(digest):
+        cx = 8 + (i % 3) * (cw + 8)
+        cy = 524 + (i // 3) * rh
+        digest_row(d, cx, cy, cw, tag, head, body)
 
-    # ---- 6 one-liners, 2 cols (y 770..850) ----
-    d.text((8, 770), "SPORT & SCIENCE", font=SANS_B(13), fill=BLUE)
-    d.line([(140, 778), (1016, 778)], fill=(200, 205, 215), width=1)
-    oneliners = [
-        ("VERSTAPPEN", "wins the Las Vegas Grand Prix 2026."),
-        ("ALCARAZ", "wins his first ATP Finals title, beating Zverev in Turin."),
-        ("WORLD CHESS", "begins in Geneva: champion Gukesh vs Sindarov."),
-        ("CRICKET", "India vs New Zealand Test in Wellington ends drawn; Pant 128."),
-        ("BEPICOLOMBO", "enters Mercury orbit (21 Nov), not quite as planned."),
-        ("RUSSIAN CORVETTE", "destroyed by blast and fire in Benghazi port, Libya."),
-    ]
-    for i, (label, text) in enumerate(oneliners):
-        ox = 8 + (i % 2) * 508
-        oy = 786 + (i // 2) * 24
-        d.text((ox, oy), label + " —", font=SANS_B(13), fill=INK)
-        lw = d.textlength(label + " — ", font=SANS_B(13))
-        d.text((ox + lw, oy), text, font=SANS(13), fill=(40, 45, 55))
+    d.text((SIDE // 2, 986),
+           "Sources: Starlit Daily · JagranJosh · CBC World Report · Disclosure News",
+           font=sans(11), fill=MUTED, anchor="ma")
+    d.rectangle([0, 0, SIDE - 1, SIDE - 1], outline=NAVY, width=2)
 
-    # ---- ALSO TODAY strip (y 858..972) ----
-    d.text((8, 858), "ALSO TODAY", font=SANS_B(13), fill=RED)
-    d.line([(104, 866), (1016, 866)], fill=(200, 205, 215), width=1)
-    also = [
-        "France: far-left street protests.",
-        "Myanmar: military-backed government criticises ASEAN decision.",
-        "Zimbabwe: pastor Uebert Angel arrested over sexual assault claims.",
-        "Trump-Kim: Pyongyang ignores Trump's bid to reopen talks (WSJ).",
-        "Taliban: women's names erased from official papers in Balkh, replaced with \"Bibi\".",
-        "India-China: military talks in Arunachal Pradesh to ease border tension.",
-        "Modi opens AI centre at IIT Patna.",
-        "SpiceJet in crisis: unpaid wages, planes grounded.",
-        "Ferrari unveils 296 Challenge Stradale and Evo in Spain.",
-        "New Yorkers stockpile goods as tech outages grow.",
-    ]
-    af = SANS(12)
-    for i, item in enumerate(also):
-        ox = 8 + (i % 2) * 508
-        oy = 876 + (i // 2) * 20
-        d.text((ox, oy), "•  " + item, font=af, fill=(40, 45, 55))
-
-    # Footer + frame.
-    d.text((W // 2, 988), "Sources: Starlit Daily · JagranJosh · CBC World Report · Disclosure News",
-           font=SANS(11), fill=GREY, anchor="ma")
-    d.rectangle([0, 0, W - 1, H - 1], outline=(15, 23, 42), width=2)
-
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    img.save(OUT, "PNG", optimize=True)
-    print("wrote", OUT, os.path.getsize(OUT), "bytes")
+    os.makedirs(os.path.dirname(DEST), exist_ok=True)
+    img.save(DEST, "PNG", optimize=True)
+    print("wrote", DEST, os.path.getsize(DEST), "bytes")
 
 
 if __name__ == "__main__":
-    main()
+    build()

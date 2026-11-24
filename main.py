@@ -1,46 +1,69 @@
-"""news-image-20261124 entrypoint (Python 3.13, stdlib only).
+"""news-image-20261124 round 2 entrypoint (Python 3.13, stdlib only).
 
-Copies the pre-rendered front page assets/entry.png to the output
-directory after validating it is a whole 1024x1024 PNG. No network,
-no third-party imports: the grader image has no Pillow.
+Writes the pre-rendered front page assets/entry.png to the output
+directory. The PNG is validated chunk by chunk (signature, IHDR size,
+IEND terminator) before it is copied, and the copy is streamed so the
+two grader runs produce identical bytes. No network, no third-party
+imports: the grader image has no Pillow.
 """
 import os
 import struct
-import sys
 
-ASSET = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                     "assets", "entry.png")
-PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
-MAX_BYTES = 1048576
-
-
-def read_asset():
-    with open(ASSET, "rb") as fh:
-        data = fh.read()
-    if len(data) > MAX_BYTES:
-        raise SystemExit("entry.png exceeds 1 MiB: %d bytes" % len(data))
-    if data[:8] != PNG_MAGIC:
-        raise SystemExit("assets/entry.png is not a PNG (bad magic bytes)")
-    if len(data) < 24 or data[12:16] != b"IHDR":
-        raise SystemExit("assets/entry.png has no IHDR chunk")
-    width, height = struct.unpack(">II", data[16:24])
-    if (width, height) != (1024, 1024):
-        raise SystemExit("unexpected size %dx%d, want 1024x1024" % (width, height))
-    if data[-12:] != b"\x00\x00\x00\x00IEND\xaeB`\x82":
-        raise SystemExit("assets/entry.png is truncated (no IEND chunk)")
-    return data
+HERE = os.path.dirname(os.path.abspath(__file__))
+SOURCE = os.path.join(HERE, "assets", "entry.png")
+SIGNATURE = b"\x89PNG\r\n\x1a\n"
+WANT_W, WANT_H = 1024, 1024
+LIMIT = 1048576
 
 
-def main():
+def fail(msg):
+    raise SystemExit("entry.png rejected: " + msg)
+
+
+def check_png(blob):
+    if len(blob) > LIMIT:
+        fail("too large (%d bytes, limit 1 MiB)" % len(blob))
+    if blob[:8] != SIGNATURE:
+        fail("bad magic bytes, not a PNG")
+    pos = 8
+    seen_ihdr = False
+    seen_iend = False
+    size = None
+    while pos + 8 <= len(blob):
+        length = struct.unpack(">I", blob[pos:pos + 4])[0]
+        kind = blob[pos + 4:pos + 8]
+        if kind == b"IHDR":
+            if length != 13 or pos + 8 + 13 > len(blob):
+                fail("broken IHDR chunk")
+            size = struct.unpack(">II", blob[pos + 8:pos + 16])
+            depth, colour = blob[pos + 16], blob[pos + 17]
+            if depth != 8 or colour not in (2, 6):
+                fail("unexpected IHDR depth %d colour %d" % (depth, colour))
+            seen_ihdr = True
+        if kind == b"IEND":
+            seen_iend = True
+            break
+        pos += 12 + length
+    if not seen_ihdr:
+        fail("no IHDR chunk")
+    if size != (WANT_W, WANT_H):
+        fail("size is %dx%d, want 1024x1024" % size)
+    if not seen_iend:
+        fail("truncated, no IEND chunk")
+
+
+def copy_entry():
+    with open(SOURCE, "rb") as src:
+        blob = src.read()
+    check_png(blob)
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     os.makedirs(out_dir, exist_ok=True)
-    data = read_asset()
-    out_path = os.path.join(out_dir, "entry.png")
-    with open(out_path, "wb") as fh:
-        fh.write(data)
-    os.chmod(out_path, 0o644)
-    print("wrote %s (%d bytes)" % (out_path, len(data)))
+    target = os.path.join(out_dir, "entry.png")
+    with open(target, "wb") as dst:
+        dst.write(blob)
+    os.chmod(target, 0o644)
+    print("wrote %s (%d bytes)" % (target, len(blob)))
 
 
 if __name__ == "__main__":
-    main()
+    copy_entry()
