@@ -1,4 +1,4 @@
-"""news-image-20261124 round 2 entrypoint (Python 3.13, stdlib only).
+"""news-image-20261124 final round entrypoint (Python 3.13, stdlib only).
 
 Writes the pre-rendered front page assets/entry.png to the output
 directory. The PNG is validated chunk by chunk (signature, IHDR size,
