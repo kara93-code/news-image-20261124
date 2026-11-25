@@ -130,7 +130,7 @@ def paint_tanker(d, x, y, w, h):
     d.rectangle([x, y + h // 2, x + w, y + h], fill=(8, 145, 178))
     d.ellipse([x + 24, y + 12, x + 64, y + 52], fill=(255, 244, 200))
     for wy in (y + h // 2 + 12, y + h // 2 + 26, y + h // 2 + 40):
-        for wx in range(x, x + w, 44):
+        for wx in range(x, x + w - 40, 44):
             d.arc([wx, wy, wx + 40, wy + 14], 180, 360,
                   fill=(207, 250, 254), width=2)
     d.rectangle([x + 40, y + h - 52, x + 220, y + h - 22], fill=(51, 65, 85))
@@ -148,14 +148,13 @@ LEADS = [
              "Fossil-fuel language splits 194 countries.",
      "src": "UN News · Reuters"},
     {"art": paint_fire, "region": "Asia", "topic": "DISASTER",
-     "head": "Candy-factory fire kills 24 in Banten",
+     "head": "Candy-factory fire kills 26 in Banten",
      "deck": "Blaze rips through a sweet factory in Indonesia; rescuers still "
              "search for missing workers.",
      "src": "JagranJosh · Starlit Daily"},
     {"art": paint_tanker, "region": "Middle East", "topic": "HORMUZ",
      "head": "25 sailors dead near the Strait of Hormuz",
-     "deck": "The UN counts the dead around the strait as tensions run high "
-             "in the Gulf.",
+     "deck": "The UN counts 25 seafarers killed around the strait since February.",
      "src": "CBC World Report · Disclosure News"},
 ]
 
@@ -163,19 +162,19 @@ CARDS = [
     ("Europe", "WAR", "Drones hit Kyiv region; Sparta II burns",
      "Russian drones strike the Kyiv region, people missing; a Russian cargo ship burns in the Gulf of Finland."),
     ("Middle East", "GAZA", "UN worker killed as Gaza strikes go on",
-     "Oxfam: heavy metals, explosives residue and asbestos poison water, soil and air."),
+     "Oxfam: 99% of Gaza contaminated — heavy metals, asbestos, explosives residue."),
     ("Americas", "VENEZUELA", "US lists Cartel de los Soles as terrorists",
      "21+ strikes on drug boats since September; about 83 dead."),
-    ("Americas", "BRAZIL", "Bolsonaro back in prison",
-     "Brazil's former president returns to jail."),
+    ("Americas", "BRAZIL", "Bolsonaro in intensive care",
+     "Ex-president, serving 27 years, is treated for a bowel obstruction and pneumonia."),
     ("Africa", "AFCON", "CAS restores Senegal as AFCON champions",
      "Court upholds the appeal; the 1-0 final stands, Morocco's 3-0 forfeit overturned."),
     ("Asia", "NEPAL", "India pledges $1.6bn to rebuild Nepal",
      "Modi and PM Shah open the Saryu–Kamala Express, Ayodhya to Janakpur."),
     ("Asia", "ICC", "Tajikistan moves to leave the ICC",
      "Dushanbe starts the process of quitting the court."),
-    ("Middle East", "IRAN", "Iranian singers flogged over concert",
-     "Whipped for performing without hijab."),
+    ("Middle East", "IRAN", "Iran flogs singer over concert",
+     "Parastoo Ahmadi gets 74 lashes for performing without hijab."),
     ("Europe", "PORTUGAL", "Lisbon marches on the cost of living",
      "Thousands take to the streets over rising prices."),
 ]
@@ -185,8 +184,8 @@ ALSO = [
     "Alcaraz wins first ATP Finals title, beating Zverev.",
     "World Chess Game 1 drawn; Gukesh survives a Berlin scare.",
     "Wellington Test drawn; Pant scores 128 for India.",
-    "BepiColombo reaches Mercury orbit — off-plan, but in orbit.",
-    "Russian corvette destroyed by blast and fire in Benghazi port.",
+    "Denmark's top court backs 'ghetto law' evictions.",
+    "Russian corvette sunk by sea drones in Benghazi port.",
     "Far-left street protests in France.",
     "Myanmar's military-backed government hits back at ASEAN.",
     "Pastor Uebert Angel arrested in Zimbabwe.",
@@ -200,7 +199,7 @@ TIMELINE = [
     ("07:00", "Modi opens AI centre"),
     ("09:00", "SpiceJet grounds planes"),
     ("14:00", "Ferrari unveils 296"),
-    ("17:00", "Europe meets in Stockholm"),
+    ("17:00", "28-point plan in Stockholm"),
     ("21:00", "New Yorkers stockpile"),
 ]
 
@@ -208,8 +207,6 @@ TIMELINE = [
 def main():
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
-    d.rectangle([10, 10, W - 11, H - 11], outline=NAVY, width=2)
-    d.rectangle([14, 14, W - 15, H - 15], outline=LINE, width=1)
 
     f_mast = fnt(SERIF_B, 38)
     f_date = fnt(SERIF_B, 25)
@@ -293,7 +290,7 @@ def main():
     d.line([28, ay, W - 28, ay], fill=LINE, width=2)
     d.text((28, ay + 6), "ALSO ON TUESDAY 24 NOVEMBER — 12 MORE STORIES",
            font=f_also_h, fill=RED)
-    nums = "DAY IN NUMBERS: 24 DEAD IN BANTEN • 25 NEAR HORMUZ • $1.6BN FOR NEPAL"
+    nums = "DAY IN NUMBERS: 26 DEAD IN BANTEN • 25 NEAR HORMUZ • $1.6BN FOR NEPAL"
     d.text((W - 28 - d.textlength(nums, font=f_small_b), ay + 7), nums,
            font=f_small_b, fill=BLUE)
     col_w = 474
